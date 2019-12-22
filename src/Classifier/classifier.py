@@ -1,16 +1,16 @@
 import os
 
-from thundersvm import SVC
+from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import Normalizer, LabelEncoder
 
 from pickle import dump, load
-from numpy import abs, amax
+from numpy import abs, amax, argmax
 
 class Classifier:
     def __init__(self, train=True, save_dir="../keras/svm", thres=0):
         if train:
-            self.clf = SVC(kernel='linear')
+            self.clf = SVC(kernel='linear', probability=True, verbose=1)
         else:
             with open(os.path.join(save_dir, 'model.p'), 'rb') as f:
                 self.clf = load(f)
@@ -70,9 +70,9 @@ class Classifier:
         in_encoder = Normalizer(norm='l2')
         X = in_encoder.transform(X)
 
-        pred_y = self.clf.predict(X)
-
         pred_prob = self.clf.predict_proba(X)
+        pred_y = argmax(pred_prob, axis=1)
+
         pred_prob = amax(pred_prob, axis=1)
 
         pred_labels = out_encoder.inverse_transform(pred_y)

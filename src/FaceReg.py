@@ -4,14 +4,16 @@ from PIL import Image
 from mtcnn.mtcnn import MTCNN
 from tensorflow.keras.models import load_model
 
+import numpy as np
 from numpy import asarray, savez_compressed
 from pickle import load
 
 from os import listdir, mkdir
 from os.path import isdir, join, exists
+import itertools
 
 from helpers import standardize
-from classifier import Classifier
+from Classifier.classifier import Classifier
 
 class FaceReg:
     def __init__(self, model_path="keras/model/facenet_keras.h5", classifier_dir="keras/svm", thres=0):
@@ -40,7 +42,10 @@ class FaceReg:
         if not isinstance(img, list):
             img = [img]
 
-        faces = self._extract_face(img)
+        faces = list(map(self._extract_face, img))
+        # Flatten the list
+        faces = list(itertools.chain.from_iterable(faces))
+
         face_embeddings = self._get_embeddings(faces)
         pred = self.classifier.predict(face_embeddings)
         return pred
@@ -69,7 +74,7 @@ class FaceReg:
 
         return
 
-    def _extract_face(self, img, is_rgb=True, require_size=(160, 160)):
+    def _extract_face(self, img, require_size=(160, 160)):
         """
         Method to extract a list of faces from a given photo.
         Args:
@@ -120,8 +125,9 @@ class FaceReg:
         Returns: list of embeddings
 
         """
-        if not isinstance(faces, list):
-            faces = [faces]
+        # if not isinstance(faces, np.ndarray):
+        #     print("Goddammit")
+        #     faces = [faces]
 
         faces = list(map(standardize, faces))
         faces = asarray(faces)
@@ -139,7 +145,8 @@ class FaceReg:
             if is_train and len(face) != 0:
                 face = [face[0]]
 
-            faces.append(faces)
+            faces += face
+
 
         return faces
 
@@ -167,7 +174,6 @@ class FaceReg:
 
             else:
                 savez_compressed(saved_file_name, X, y)
-
         return asarray(X), asarray(y)
 
 
@@ -177,10 +183,16 @@ def main():
     data_dir = '5-celebrity-faces-dataset/train'
     facereg = FaceReg()
     facereg.train_classifer(data_dir)
-    test_image = Image.open(join(data_dir, 'httpiamediaimdbcomimagesMMVBMTANDQNTAxNDVeQTJeQWpwZBbWUMDIMjQOTYVUXCRALjpg.jpg'))
-    res = facereg(test_image)
+    images = []
+    eval_path = join(data_dir, '../val/ben_afflek')
+
+    for filename in listdir(eval_path):
+        images.append(Image.open(join(eval_path, filename)))
+
+    res = facereg(images)
 
     print(res)
+    return
 
 if __name__ == '__main__':
     main()
