@@ -1,0 +1,8 @@
+tensorflow-gpu
+keras
+h5py
+Pillow
+mtcnn
+numpy
+scikit-learn
+thundersvm
