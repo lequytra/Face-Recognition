@@ -34,7 +34,7 @@ new classifier if needed. The classifier will be saved to ```classifier_dir```.
     - ```re_train```: (default to True) whether to retrain and save a new classifier. 
 
 - ```predict(img)```: Does what it is supposed to. Given an image or list of images, return a list
-of predicted identity for the images. Again, open image via ```open_images```. 
+of tuples (predicted identity, conf-score) for the images. Again, open image via ```open_images```. 
 
 
 **Note:**
