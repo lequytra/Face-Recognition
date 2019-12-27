@@ -8,6 +8,7 @@ import numpy as np
 from numpy import asarray, savez_compressed
 from pickle import load
 
+import os
 from os import listdir, mkdir
 from os.path import isdir, join, exists
 import itertools
@@ -21,8 +22,9 @@ class FaceReg:
         self.model = load_model(model_path)
         self.classifier = None
         self.classifier_dir = classifier_dir
+        self.thres = thres
 
-    def __call__(self, img):
+    def predict(self, img):
         """
         Method to predict the identity of list of images
         Args:
@@ -53,13 +55,29 @@ class FaceReg:
         return pred
 
     def add_new_identity(self, img, name, directory, re_train=True, **kwargs):
+        """
+            A method to add a new identity to the existing database.
+        Args:
+            img: path to image
+            name:
+            directory:
+            re_train:
+            **kwargs:
+
+        Returns:
+
+        """
+
         if not isinstance(img, list):
             img = [img]
 
-        new_person_dir = mkdir(join(directory, name))
+        new_person_dir = join(directory, name)
+        if not isdir(new_person_dir)
+            mkdir(join(directory, name))
 
         for idx, i in enumerate(img):
-            if not isinstance(i, PIL.JpegImagePlugin.JpegImageFile):
+            if not isinstance(i, PIL.JpegImagePlugin.JpegImageFile)\
+                    or not isinstance(img, PIL.PngImagePlugin.PngImageFile):
                 img = Image.fromarray(img)
             path = join(new_person_dir, "{}.jpg".format(idx))
             img.save(path)
@@ -71,10 +89,32 @@ class FaceReg:
     def train_classifer(self, directory, **kwargs):
         X, y = self._load_dataset(directory, **kwargs)
         embeddings = self._get_embeddings(X)
-        self.classifier = Classifier(save_dir=self.classifier_dir)
+        self.classifier = Classifier(save_dir=self.classifier_dir, thres=self.thres)
         self.classifier.train(embeddings, y)
 
         return
+
+    def open_images(self, path):
+        """
+            A method to open image file(s) in the format required by FaceReg
+        Args:
+            path: path to directory or file to open as PIL Image file.
+
+        Returns: a list of image(s)
+
+        """
+        def image_file(file):
+            return file.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif'))
+
+        if isdir(path):
+            return [Image.open(join(path, file)) for file in os.listdir(path) if image_file(file)]
+        elif os.path.exists(path):
+            try:
+                return [Image.open(path)]
+            except IOError as e:
+                print(e)
+        else:
+            raise FileNotFoundError
 
     def _extract_face(self, img, require_size=(160, 160)):
         """
@@ -87,7 +127,8 @@ class FaceReg:
         Returns: list of images
 
         """
-        if not isinstance(img, PIL.JpegImagePlugin.JpegImageFile):
+        if not isinstance(img, PIL.JpegImagePlugin.JpegImageFile) \
+                or not isinstance(img, PIL.PngImagePlugin.PngImageFile):
             try:
                 img = Image.fromarray(img)
             except TypeError as e:
@@ -182,17 +223,22 @@ class FaceReg:
 
 
 def main():
+    # This point to the directory contains all the training data
     data_dir = '5-celebrity-faces-dataset/train'
+    # Initialize a new object
     facereg = FaceReg()
-    # facereg.train_classifer(data_dir)
+    # This is for training a classifier on custom dataset. Comment out this line if it is not needed.
+    facereg.train_classifer(data_dir)
+    # Initialize a list to hold eval images
     images = []
+    # Path point to the eval folder
     eval_path = join(data_dir, '../val/ben_afflek')
-
+    # Loads all images from folder into image list
     for filename in listdir(eval_path):
         images.append(Image.open(join(eval_path, filename)))
-
-    res = facereg(images)
-
+    # Predict on list of eval images
+    res = facereg.predict(images)
+    # Print predictions
     print(res)
     return
 
