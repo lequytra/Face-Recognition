@@ -33,6 +33,7 @@ class FaceReg:
         """
         if not self.classifier:
             path = join(self.classifier_dir, 'model.p')
+            print("Loading classifier")
             if exists(path):
                 with open(path, 'rb') as f:
                     self.classifier = load(f)
@@ -48,6 +49,7 @@ class FaceReg:
 
         face_embeddings = self._get_embeddings(faces)
         pred = self.classifier.predict(face_embeddings)
+
         return pred
 
     def add_new_identity(self, img, name, directory, re_train=True, **kwargs):
@@ -69,7 +71,7 @@ class FaceReg:
     def train_classifer(self, directory, **kwargs):
         X, y = self._load_dataset(directory, **kwargs)
         embeddings = self._get_embeddings(X)
-        self.classifier = Classifier(train=True, save_dir=self.classifier_dir)
+        self.classifier = Classifier(save_dir=self.classifier_dir)
         self.classifier.train(embeddings, y)
 
         return
@@ -182,7 +184,7 @@ class FaceReg:
 def main():
     data_dir = '5-celebrity-faces-dataset/train'
     facereg = FaceReg()
-    facereg.train_classifer(data_dir)
+    # facereg.train_classifer(data_dir)
     images = []
     eval_path = join(data_dir, '../val/ben_afflek')
 

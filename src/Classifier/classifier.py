@@ -8,17 +8,15 @@ from pickle import dump, load
 from numpy import abs, amax, argmax
 
 class Classifier:
-    def __init__(self, train=True, save_dir="../keras/svm", thres=0):
-        if train:
-            self.clf = SVC(kernel='linear', probability=True, verbose=1)
-        else:
-            with open(os.path.join(save_dir, 'model.p'), 'rb') as f:
-                self.clf = load(f)
+    def __init__(self, save_dir="../keras/svm", thres=0):
+
+        self.clf = SVC(kernel='linear', probability=True, verbose=1)
 
         self.save_dir = save_dir
         self.thres = thres
+        self.out_encoder = None
 
-    def train(self, trainX, trainy, testX=None, testy=None, print_eval=True):
+    def train(self, trainX, trainy, testX=None, testy=None, verbose=True):
 
         in_encoder = Normalizer(norm='l2')
         trainX = in_encoder.transform(trainX)
@@ -26,15 +24,15 @@ class Classifier:
         if testX:
             testX = in_encoder.transform(testy)
 
-        out_encoder = LabelEncoder()
-        out_encoder.fit(trainy)
-        trainy = out_encoder.transform(trainy)
+        self.out_encoder = LabelEncoder()
+        self.out_encoder.fit(trainy)
+        trainy = self.out_encoder.transform(trainy)
         if testy:
-            testy = out_encoder.transform(testy)
+            testy = self.out_encoder.transform(testy)
 
         self.clf.fit(trainX, trainy)
 
-        if print_eval:
+        if verbose:
             train_pred = self.clf.predict(trainX)
             train_score = accuracy_score(train_pred, trainy)
 
@@ -47,10 +45,7 @@ class Classifier:
         model_path = os.path.join(self.save_dir, 'model.p')
         out_encoder_path = os.path.join(self.save_dir, 'label_index.p')
         with open(model_path, 'wb') as f:
-            dump(self.clf, f)
-
-        with open(out_encoder_path, 'wb') as f:
-            dump(out_encoder, f)
+            dump(self, f)
 
         print("Training finished!! Model file and label encoder are saved at " +
               "%s and %s" %(model_path, out_encoder_path))
@@ -58,24 +53,19 @@ class Classifier:
         return
 
     def predict(self, X):
-        out_encoder_path = os.path.join(self.save_dir, 'label_index.p')
-
-        if not os.path.exists(out_encoder_path):
-            raise Exception("Model and label Encoder are not found in the given directory")
-
-        with open(out_encoder_path, 'rb') as f:
-            out_encoder = load(f)
-
+        if self.out_encoder is None:
+            raise Exception("Classifier might not have been trained. Please checked again!!")
         # Normalize input
         in_encoder = Normalizer(norm='l2')
         X = in_encoder.transform(X)
 
         pred_prob = self.clf.predict_proba(X)
+        print(pred_prob)
         pred_y = argmax(pred_prob, axis=1)
 
         pred_prob = amax(pred_prob, axis=1)
 
-        pred_labels = out_encoder.inverse_transform(pred_y)
+        pred_labels = self.out_encoder.inverse_transform(pred_y)
 
         pred_labels[pred_prob < self.thres] = "Unknown"
         pred_prob[pred_prob < self.thres] = abs(pred_prob[pred_prob < self.thres] - 1)
